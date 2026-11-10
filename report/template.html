@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>curl-in-js, cinco anos depois</title>
+<meta name="description" content="Uma releitura do curl-in-js: o que o código de 2021 conta sobre a época, o que ele já fazia bem e como foi refeito em 2026.">
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --ink: #0d2433;
+    --text: #25333d;
+    --muted: #5d6b76;
+    --line: #d9dee3;
+    --marker: #f7df1e;
+    --marker-soft: #f7df1e55;
+    --bad: #b3261e;
+    --good: #1b6e3c;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --text-col: 43rem;
+    --wide-col: 68rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f151a;
+      --surface: #161d24;
+      --ink: #f1f4f6;
+      --text: #c9d2d9;
+      --muted: #8e9ba6;
+      --line: #2a343d;
+      --marker-soft: #f7df1e2e;
+      --bad: #ff8a80;
+      --good: #7fd49b;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 var(--sans);
+  }
+  main, header.top, footer { padding: 0 1.25rem; max-width: calc(var(--wide-col) + 2.5rem); margin: 0 auto; }
+  .col { max-width: var(--text-col); }
+
+  h1, h2, h3 { font-family: var(--mono); color: var(--ink); line-height: 1.2; margin: 0; }
+  h1 { font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 800; letter-spacing: -0.02em; }
+  h2 { font-size: 1.45rem; font-weight: 700; margin-top: 5rem; }
+  h3 { font-size: 1rem; font-weight: 700; margin-top: 2.6rem; }
+  p { margin: 1rem 0 0; }
+  a { color: inherit; text-decoration-color: var(--marker); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  a:hover { background: var(--marker-soft); }
+  code, kbd { font-family: var(--mono); font-size: 0.86em; }
+  :not(pre) > code { background: var(--marker-soft); padding: 0.08em 0.3em; border-radius: 3px; color: var(--ink); }
+  mark { background: var(--marker); color: #0d2433; padding: 0 0.2em; }
+  strong { color: var(--ink); }
+
+  header.top { padding-top: 4.5rem; padding-bottom: 1rem; }
+  header.top .lede { font-size: 1.2rem; max-width: 40rem; margin-top: 1.4rem; }
+  .tick { color: var(--muted); }
+
+  dl.facts { display: flex; flex-wrap: wrap; gap: 0.6rem 2.4rem; margin: 2.2rem 0 0; padding: 1.1rem 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+  dl.facts div { min-width: 7rem; }
+  dl.facts dt { font-size: 0.8rem; color: var(--muted); }
+  dl.facts dd { margin: 0; font-family: var(--mono); font-weight: 700; color: var(--ink); font-size: 1.05rem; }
+
+  nav.toc { margin-top: 1.4rem; font-family: var(--mono); font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; }
+  nav.toc a { text-decoration: none; color: var(--muted); }
+  nav.toc a:hover { color: var(--ink); }
+
+  /* Blocos de código (Jonacode) */
+  .code { margin-top: 1.2rem; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+  .code > .label { display: flex; justify-content: space-between; gap: 1rem; font: 0.74rem/1 var(--mono); color: var(--muted); padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--line); }
+  .code pre { margin: 0; padding: 0.8rem; overflow: auto; font: 13px/1.6 var(--mono); }
+  .jc-line-deco.mark { background: var(--marker-soft); box-shadow: inset 3px 0 0 var(--marker); }
+
+  /* Linha do tempo */
+  ol.timeline { list-style: none; margin: 1.6rem 0 0; padding: 0; font-family: var(--mono); font-size: 0.84rem; }
+  ol.timeline li { display: grid; grid-template-columns: 5.2rem 4.6rem 1fr; gap: 0.8rem; padding: 0.38rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  ol.timeline .t { color: var(--muted); }
+  ol.timeline .h { color: var(--muted); }
+  ol.timeline .m { color: var(--ink); font-family: var(--sans); font-size: 0.95rem; }
+  ol.timeline li.gap { display: block; border-bottom: 1px solid var(--line); color: var(--muted); padding: 0.9rem 0 0.9rem 5.2rem; font-family: var(--sans); font-size: 0.9rem; }
+  ol.timeline li.now .m { font-weight: 700; }
+  @media (max-width: 34rem) { ol.timeline li { grid-template-columns: 4.6rem 1fr; } ol.timeline .h { display: none; } ol.timeline li.gap { padding-left: 0; } }
+
+  /* Tabelas */
+  .table-scroll { overflow-x: auto; margin-top: 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 0.6rem 0.9rem 0.6rem 0; border-bottom: 1px solid var(--line); }
+  th { font: 700 0.76rem var(--mono); color: var(--muted); border-bottom: 2px solid var(--ink); white-space: nowrap; }
+  td code { white-space: pre-wrap; word-break: break-word; }
+  td.was { color: var(--bad); }
+  td.now { color: var(--good); }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+
+  /* Lado a lado */
+  .lab { margin-top: 1.6rem; }
+  .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .presets button, .tabs button {
+    font: 0.8rem var(--mono); color: var(--text); background: transparent; border: 1px solid var(--line);
+    padding: 0.42rem 0.7rem; border-radius: 4px; cursor: pointer;
+  }
+  .presets button:hover, .tabs button:hover { border-color: var(--ink); }
+  .presets button[aria-pressed="true"], .tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .presets button:focus-visible, .tabs button:focus-visible { outline: 2px solid var(--marker); outline-offset: 2px; }
+  .hint { min-height: 3.2em; margin-top: 0.9rem; font-size: 0.95rem; }
+  .tokens { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.9rem; font: 0.76rem var(--mono); }
+  .tokens span { border: 1px solid var(--line); background: var(--surface); padding: 0.2rem 0.45rem; border-radius: 3px; white-space: pre-wrap; word-break: break-all; }
+  .tokens .caption { border: 0; background: none; color: var(--muted); padding-left: 0; }
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.4rem; }
+  .versus .code { margin-top: 0.8rem; }
+  @media (max-width: 52rem) { .versus { grid-template-columns: 1fr; } }
+  .year { font-family: var(--mono); font-weight: 800; color: var(--ink); }
+
+  /* Fluxo */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.4rem; margin-top: 1.6rem; font: 0.78rem var(--mono); }
+  .flow .group { border: 1px dashed var(--line); border-radius: 6px; padding: 0.5rem 0.6rem 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .flow .group > b { font-weight: 400; color: var(--muted); font-size: 0.7rem; }
+  .flow .steps { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+  .flow .step { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 0.3rem 0.5rem; color: var(--ink); }
+  .flow .arrow { color: var(--muted); }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.4rem; }
+
+  ul.plain { padding-left: 1.1rem; margin: 1rem 0 0; }
+  ul.plain li { margin-top: 0.45rem; }
+
+  footer { margin-top: 6rem; padding-top: 2rem; padding-bottom: 4rem; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wide">
+    <h1>curl<span class="tick">`</span>…<span class="tick">`</span><br>cinco anos depois</h1>
+    <p class="lede">Em 7 de abril de 2021, Jonathan criou o <a href="https://github.com/JonathanSantos-zz/curl-in-js">curl-in-js</a> pelo editor web do GitHub: uma função que recebe o “Copy as cURL” do navegador dentro de um template literal e faz a requisição. Este relatório relê aquele código com calma, mede o que ele faz e mostra a versão refeita em 2026.</p>
+
+    <dl class="facts">
+      <div><dt>Idade em 10 nov 2026</dt><dd>5 anos, 7 meses, 3 dias</dd></div>
+      <div><dt>Commits</dt><dd>9, todos pela web</dd></div>
+      <div><dt>Primeira versão</dt><dd>13 min 29 s</dd></div>
+      <div><dt>Código</dt><dd>{{ORIGINAL_LINES}} linhas</dd></div>
+      <div><dt>Dependências</dt><dd>1 (axios)</dd></div>
+    </dl>
+
+    <nav class="toc" aria-label="Seções">
+      <a href="#ideia">a ideia</a>
+      <a href="#tempo">linha do tempo</a>
+      <a href="#epoca">a época</a>
+      <a href="#admiro">o que admiro</a>
+      <a href="#revelou">o que o tempo revelou</a>
+      <a href="#lado-a-lado">2021 × 2026 ao vivo</a>
+      <a href="#refeito">o que foi refeito</a>
+      <a href="#padroes">padrões</a>
+      <a href="#essencia">o que ficou igual</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section id="ideia">
+  <div class="col">
+    <h2>A ideia</h2>
+    <p>Todo mundo que depura uma API no DevTools conhece o gesto: botão direito na requisição, <em>Copy as cURL</em>, colar no terminal. O curl-in-js leva esse gesto para dentro do JavaScript. O comando colado vira o próprio argumento da função, sem aspas extras, sem converter nada à mão.</p>
+    <p>O arquivo de teste original é a melhor documentação do projeto. Ele continua aqui, do jeito que foi escrito:</p>
+  </div>
+  <div class="wide">
+    <div class="code" data-file="original/src/curl/curl.test.js" data-wrap></div>
+  </div>
+  <div class="col">
+    <p>A crase logo depois de <code>curl</code> é o projeto inteiro. É um <em>tagged template</em>: o JavaScript chama a função <code>curl</code> entregando o texto entre as crases. Bibliotecas como styled-components e graphql-tag já tinham popularizado a técnica para CSS e GraphQL; em 2021 o zx, do Google, fez o mesmo com comandos de shell. O curl-in-js aplica a ideia a um formato que ninguém precisa aprender, porque o navegador já escreve por você.</p>
+  </div>
+</section>
+
+<section id="tempo">
+  <div class="col">
+    <h2>Linha do tempo</h2>
+    <p>O histórico do Git conta como o projeto nasceu. As mensagens são as que o GitHub sugere no editor web (“Create curl.js”, “Add files via upload”): o código foi escrito em outro lugar e levado para o repositório arquivo por arquivo, numa quarta-feira antes do almoço.</p>
+    <ol class="timeline">
+      <li><span class="t">7 abr 2021</span><span class="h">11:52:49</span><span class="m">Initial commit: o repositório e um README de duas linhas</span></li>
+      <li><span class="t">+1 min</span><span class="h">11:53:59</span><span class="m">Add files via upload: <code>package.json</code></span></li>
+      <li><span class="t">+2 min</span><span class="h">11:54:52</span><span class="m">Create curl.js</span></li>
+      <li><span class="t">+3 min</span><span class="h">11:55:32</span><span class="m">Create utils.js</span></li>
+      <li><span class="t">+5 min</span><span class="h">11:57:21</span><span class="m">Create curl.test.js</span></li>
+      <li><span class="t">+7 min</span><span class="h">11:59:55</span><span class="m">Update curl.js: aspas duplas viram simples no import</span></li>
+      <li><span class="t">+13 min</span><span class="h">12:06:18</span><span class="m">Update package.json: o script de teste e o Node 14.15.1</span></li>
+      <li class="gap">Dois dias de uso. Alguma requisição devolveu erro e outra precisou de um método diferente de GET e POST, porque foi isso que os dois commits seguintes resolveram.</li>
+      <li><span class="t">9 abr 2021</span><span class="h">14:38:52</span><span class="m">Update curl.js: entra o <code>.catch</code> que devolve <code>{ data, status }</code> também nos erros (e as aspas duplas voltam)</span></li>
+      <li><span class="t">+15 s</span><span class="h">14:39:07</span><span class="m">Update utils.js: suporte a <code>-X</code> e URL sem aspas</span></li>
+      <li class="gap">2.041 dias sem commits.</li>
+      <li class="now"><span class="t">10 nov 2026</span><span class="h"></span><span class="m">Releitura, medição e a versão 2.0.0</span></li>
+    </ol>
+    <p>Os dois commits de 9 de abril são o detalhe de que mais gosto. Eles mostram que o projeto foi usado de verdade: as mudanças vieram de necessidades que apareceram no uso.</p>
+  </div>
+</section>
+
+<section id="epoca">
+  <div class="col">
+    <h2>O que o código conta sobre abril de 2021</h2>
+    <p>Algumas linhas funcionam como camadas de sedimento. Dá para datar o projeto só por elas.</p>
+  </div>
+  <div class="wide">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Vestígio</th><th>O que ele registra</th></tr></thead>
+        <tbody>
+          <tr><td><code>"node": "14.15.1"</code></td><td>O Node 14 era o LTS da vez. A versão exata, sem <code>&gt;=</code>, é a marca de quem fixou o ambiente que tinha na máquina naquele dia.</td></tr>
+          <tr><td><code>"type": "module"</code> e <code>'./utils.js'</code></td><td>Módulos ES nativos no Node ainda eram novidade. A extensão obrigatória no import era a pegadinha que todo mundo descobria na primeira tentativa.</td></tr>
+          <tr><td><code>console.log(await curl`…`)</code></td><td><em>Top-level await</em> tinha saído de trás da flag no Node 14.8, meses antes. O teste usa o recurso sem cerimônia, no nível do módulo.</td></tr>
+          <tr><td><code>import axios from 'axios'</code></td><td>O Node não tinha <code>fetch</code>. Ele só chegaria no Node 18, um ano depois. Em 2021, fazer HTTP com conforto era instalar o axios, aqui na versão 0.21.</td></tr>
+          <tr><td><code>sec-ch-ua: "Google Chrome";v="89"</code></td><td>O comando do teste foi copiado de um Chrome 89, de março de 2021, a versão em que os <em>Client Hints</em> passaram a ser enviados por padrão. A marca falsa <code>";Not A Brand";v="99"</code> é o truque do Chrome para ninguém depender da lista.</td></tr>
+          <tr><td><code>"test": "node src/curl/curl.test.js"</code></td><td>O <code>node:test</code> também só viria no Node 18. Sem querer instalar um framework para 68 linhas, o teste é um script que imprime o resultado e pede olho humano.</td></tr>
+          <tr><td><code>pokeapi.co/api/v2/pokemon/ditto</code></td><td>A PokéAPI, a API pública que uma geração inteira usou para aprender e testar. E o Ditto, o Pokémon que copia os outros, num projeto sobre copiar requisições.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="admiro">
+  <div class="col">
+    <h2>O que admiro neste código</h2>
+
+    <h3>1. A interface é o formato que o navegador já escreve</h3>
+    <p>O melhor design de API aqui foi não inventar uma. A assinatura usa desestruturação direto no parâmetro para pegar o primeiro pedaço do template:</p>
+  </div>
+  <div class="wide"><div class="code" data-file="original/src/curl/curl.js" data-mark="4"></div></div>
+
+  <div class="col">
+    <h3>2. Um parser que cabe em uma expressão regular</h3>
+    <p>Esta linha sustenta o projeto:</p>
+  </div>
+  <div class="wide"><div class="code" data-file="original/src/curl/utils.js" data-lines="1-1" data-wrap></div></div>
+  <div class="col">
+    <p>Ela funciona por causa de um detalhe sutil da linguagem. Dentro de um template literal, uma barra invertida no fim da linha é uma continuação: o JavaScript apaga a barra e a quebra de linha. Sobra a indentação que o DevTools coloca antes de cada <code>-H</code>. Então “dois ou mais espaços” vira o separador entre argumentos, e o comando se divide sozinho em linhas limpas. Entender o formato do Chrome bem o bastante para resolver o problema com um <code>split</code> é uma leitura esperta do terreno.</p>
+
+    <h3>3. Pipelines com nome em cada etapa</h3>
+    <p>Cada função declara pequenos passos e depois os encadeia. Leia só o <code>return</code> e você tem a descrição do algoritmo em quatro verbos:</p>
+  </div>
+  <div class="wide"><div class="code" data-file="original/src/curl/utils.js" data-lines="13-26" data-mark="21-25"></div></div>
+  <div class="col">
+    <p>Tem bastante técnica concentrada nessas linhas: funções puras, estilo <em>point-free</em> (os passos entram por nome, sem <code>x =&gt; f(x)</code>), desestruturação de array no parâmetro, propriedade computada em <code>{ [key]: value }</code> e um <code>reduce</code> que monta o objeto sem mutar nada. Era o JavaScript funcional que a comunidade estava aprendendo a gostar em 2021.</p>
+
+    <h3>4. Erro HTTP é resultado</h3>
+    <p>Sucesso e falha saem com o mesmo formato. Quem chama recebe <code>{ data, status }</code> e decide o que fazer com um 404, sem <code>try/catch</code>:</p>
+  </div>
+  <div class="wide"><div class="code" data-file="original/src/curl/curl.js" data-lines="10-12" data-wrap></div></div>
+
+  <div class="col">
+    <h3>5. A divisão em dois arquivos</h3>
+    <p><code>utils.js</code> só transforma texto em dados. <code>curl.js</code> é o único que fala com a rede. Essa separação tem nome, <em>functional core, imperative shell</em>, e já estava ali em 68 linhas. Foi ela que permitiu rodar o parser de 2021 dentro deste relatório, no navegador, sem tocar em uma linha: ele nunca dependeu do Node.</p>
+
+    <h3>6. O método inferido</h3>
+    <p>Sem <code>-X</code>, um comando com corpo vira POST. É exatamente a regra do curl de verdade, reproduzida em uma função de dez linhas. E há um charme extra nela: <code>normalizeLineMethood</code>, com dois “o”, ficou preservado na pasta <code>original/</code> como estava.</p>
+  </div>
+</section>
+
+<section id="revelou">
+  <div class="col">
+    <h2>O que o tempo revelou</h2>
+    <p>Para saber o que melhorar, rodei o código de 2021 com o axios que o <code>package.json</code> pede (o <code>^0.21.1</code> resolve hoje para 0.21.4) contra um servidor HTTP local que devolve o que recebe. O script está em <a href="report/probe-2021.js"><code>report/probe-2021.js</code></a>. Estes são os resultados medidos, não suposições:</p>
+  </div>
+  <div class="wide">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Entrada</th><th>Em 2021</th><th>Causa</th><th>Em 2026</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>POST com <code>--data-raw '{"name":"Jona"}'</code></td>
+            <td class="was">O servidor recebe o corpo vazio</td>
+            <td>O axios espera a opção <code>data</code>; o código passa <code>body</code>, que é o nome usado pelo fetch. O corpo era lido corretamente e nunca enviado.</td>
+            <td class="now">O corpo chega inteiro (teste e2e)</td>
+          </tr>
+          <tr>
+            <td><code>curl`… /users/${id} …`</code></td>
+            <td class="was"><code>TypeError: Cannot read properties of undefined (reading 'data')</code></td>
+            <td><code>([curlString])</code> pega só o texto antes da primeira interpolação. A URL fica pela metade e o resto do comando some.</td>
+            <td class="now">Interpolação suportada, cada valor vira um argumento</td>
+          </tr>
+          <tr>
+            <td>Servidor fora do ar</td>
+            <td class="was">O mesmo <code>TypeError</code></td>
+            <td>Sem resposta, o erro do axios não tem <code>response</code>, e o <code>.catch</code> tenta desestruturá-lo.</td>
+            <td class="now"><code>CurlRequestError</code> com a causa e a requisição</td>
+          </tr>
+          <tr>
+            <td>Comando em uma linha só</td>
+            <td class="was">URL: o comando inteiro. Cabeçalhos: <code>{}</code></td>
+            <td>O parser depende da indentação do DevTools. Sem ela não há o que dividir.</td>
+            <td class="now">Um tokenizer de shell lê qualquer formatação</td>
+          </tr>
+          <tr>
+            <td><code>-H 'X-Note: a: b'</code></td>
+            <td class="was"><code>{"X-Note":"a"}</code></td>
+            <td><code>split(': ')</code> seguido de <code>[key, value]</code> descarta o que vem depois do segundo separador.</td>
+            <td class="now">Divide só no primeiro <code>:</code></td>
+          </tr>
+          <tr>
+            <td><code>-H 'X-Note: a&nbsp;&nbsp;b'</code> (dois espaços)</td>
+            <td class="was"><code>{"-H 'X-Note":"a"}</code></td>
+            <td>Os dois espaços dentro do valor também disparam o <code>split(/\s{2,}/)</code>.</td>
+            <td class="now">Aspas protegem o conteúdo</td>
+          </tr>
+          <tr>
+            <td><code>--data-raw 'a=1&amp;b=2'</code></td>
+            <td class="was"><code>SyntaxError: … is not valid JSON</code></td>
+            <td><code>JSON.parse</code> em todo corpo, sem alternativa para formulários ou texto.</td>
+            <td class="now">O corpo é o texto exato; JSON é opcional</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col">
+    <p>Nada disso diminui o original. O caso para o qual ele foi escrito, um GET colado do Chrome, funciona hoje como funcionava em 2021. A lista mostra onde ficava a fronteira do que foi testado na época: o teste único era um GET, então o envio do corpo nunca teve a chance de falhar na frente de alguém.</p>
+  </div>
+</section>
+
+<section id="lado-a-lado">
+  <div class="col">
+    <h2>2021 × 2026, ao vivo</h2>
+    <p>Os dois parsers estão rodando nesta página. O da esquerda é o <code>utils.js</code> original, byte a byte. O da direita é o novo. Edite o comando ou escolha um caso; nada é enviado para a rede, a página só mostra a requisição que cada versão montaria.</p>
+  </div>
+  <div class="wide lab">
+    <div class="presets" id="presets" role="group" aria-label="Casos prontos"></div>
+    <p class="hint col" id="hint"></p>
+    <div class="code"><div class="label"><span>dentro de curl`…`</span><span>editável</span></div><div id="lab-input"></div></div>
+    <div class="tokens" id="lab-tokens" aria-label="Argumentos lidos pelo tokenizer de 2026"></div>
+    <div class="versus">
+      <div>
+        <div class="code"><div class="label"><span><span class="year">2021</span> · getURL, getHeaders, getBody, getMethod</span></div><div id="lab-old"></div></div>
+      </div>
+      <div>
+        <div class="code"><div class="label"><span><span class="year">2026</span> · parseCurl</span></div><div id="lab-new"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="refeito">
+  <div class="col">
+    <h2>O que foi refeito</h2>
+    <p>A regra da reescrita foi manter a experiência de quem usa e trocar o que está por baixo. O <code>split</code> por indentação deu lugar a um caminho com etapas pequenas, em que só a última toca a rede:</p>
+  </div>
+  <div class="wide">
+    <div class="flow" role="img" aria-label="Fluxo: o template vira segmentos, o tokenizer produz argumentos, a tabela de opções monta um rascunho, o rascunho vira uma requisição imutável, e só então o fetch é chamado e a resposta vira o resultado.">
+      <div class="group"><b>núcleo puro: texto entra, dados saem</b>
+        <div class="steps">
+          <span class="step">curl`…${x}…`</span><span class="arrow">→</span>
+          <span class="step">segmentos</span><span class="arrow">→</span>
+          <span class="step">tokenize</span><span class="arrow">→</span>
+          <span class="step">argumentos</span><span class="arrow">→</span>
+          <span class="step">tabela de opções</span><span class="arrow">→</span>
+          <span class="step">rascunho</span><span class="arrow">→</span>
+          <span class="step">requisição imutável</span>
+        </div>
+      </div>
+      <div class="group"><b>casca: a única parte com rede</b>
+        <div class="steps">
+          <span class="step">fetch</span><span class="arrow">→</span>
+          <span class="step">{ data, status, ok, headers }</span>
+        </div>
+      </div>
+    </div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Arquivos da versão nova"></div>
+    <div class="code"><div id="new-code"></div></div>
+  </div>
+
+  <div class="col">
+    <h3>As mudanças, uma por uma</h3>
+    <ul class="plain">
+      <li><strong>Tokenizer de shell.</strong> Lê aspas simples, aspas duplas, o <code>$'…'</code> que o Chrome usa quando o corpo tem apóstrofo ou quebra de linha, e a barra de continuação. O comando pode vir em uma linha, em dez, com ou sem indentação.</li>
+      <li><strong>Template lido cru.</strong> A versão nova usa <code>strings.raw</code>. Um <code>\n</code> dentro de um corpo JSON chega ao parser como o shell entregaria, em vez de virar uma quebra de linha de verdade e invalidar o JSON.</li>
+      <li><strong>Interpolação segura.</strong> <code>${valor}</code> entra como um argumento só, sem ser reinterpretado. Um token com aspas ou espaços não consegue “escapar” e injetar outra opção. Objetos viram JSON.</li>
+      <li><strong>Mais do curl.</strong> <code>-X</code>, <code>-H</code>, <code>-d</code> e variações, <code>--json</code>, <code>--data-urlencode</code>, <code>-G</code>, <code>-I</code>, <code>-u</code>, <code>-A</code>, <code>-e</code>, <code>-b</code>, <code>--max-time</code>, opções agrupadas (<code>-sSL</code>) e a forma <code>--opcao=valor</code>.</li>
+      <li><strong>fetch nativo.</strong> O axios saiu. O projeto não tem nenhuma dependência e o mesmo núcleo roda no Node, no Deno, no Bun e no navegador.</li>
+      <li><strong>Falhas com nome.</strong> <code>CurlSyntaxError</code> diz o que faltou no comando. <code>CurlRequestError</code> guarda a causa original e a requisição que falhou.</li>
+      <li><strong>Testes que rodam sozinhos.</strong> {{TEST_COUNT}} testes com <code>node:test</code>, sem internet: unitários do tokenizer e do parser, o <code>curl</code> com um fetch de mentira, e quatro de ponta a ponta contra um servidor HTTP local.</li>
+    </ul>
+  </div>
+
+  <div class="wide">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th><th>2021</th><th>2026</th></tr></thead>
+        <tbody>
+          <tr><td>Dependências</td><td class="num">1 (axios 0.21)</td><td class="num">0</td></tr>
+          <tr><td>Node</td><td class="num">14.15.1, exato</td><td class="num">&gt;= 20</td></tr>
+          <tr><td>Código</td><td class="num">{{ORIGINAL_LINES}} linhas em 2 arquivos</td><td class="num">{{NEW_LINES}} linhas em 7 arquivos, com JSDoc</td></tr>
+          <tr><td>Testes</td><td class="num">1 script que precisa de internet</td><td class="num">{{TEST_COUNT}} testes, offline</td></tr>
+          <tr><td>Opções do curl</td><td class="num">-H, -X, --data-raw</td><td class="num">15 com efeito, 14 reconhecidas e ignoradas</td></tr>
+          <tr><td><code>"main": "index.js"</code></td><td class="num">apontava para um arquivo que não existia</td><td class="num">existe</td></tr>
+          <tr><td>Onde roda</td><td class="num">Node</td><td class="num">Node, Deno, Bun, navegador</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="padroes">
+  <div class="col">
+    <h2>Padrões aplicados</h2>
+    <p>Nenhum padrão entrou por enfeite. Cada um responde a um problema que a medição mostrou ou a uma mudança que é provável no futuro.</p>
+  </div>
+  <div class="wide">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Padrão</th><th>Onde</th><th>O que resolve</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Functional core, imperative shell</strong></td><td><code>tokenize.js</code>, <code>options.js</code>, <code>parse.js</code> são puros; só <code>curl.js</code> chama a rede</td><td>Leva adiante a divisão que o original já tinha. O parser inteiro é testável sem servidor e roda nesta página.</td></tr>
+          <tr><td><strong>Máquina de estados em tabela</strong> (State)</td><td><code>readers</code> em <code>tokenize.js</code></td><td>Um leitor por contexto de aspas. Cada regra do shell fica em uma função curta, em vez de um <code>if</code> gigante com flags.</td></tr>
+          <tr><td><strong>Tabela de estratégias</strong> (Strategy + Registry)</td><td><code>OPTION_TABLE</code> em <code>options.js</code></td><td>Ensinar uma opção nova é acrescentar uma linha. O parser não muda, que é o princípio aberto/fechado na prática.</td></tr>
+          <tr><td><strong>Reducers imutáveis</strong></td><td>Cada opção recebe um rascunho e devolve outro</td><td>É o <code>reducerToObjectHeader</code> de 2021 promovido a arquitetura. Nenhuma opção interfere em outra por efeito colateral.</td></tr>
+          <tr><td><strong>Value Object</strong></td><td>A requisição que <code>parseCurl</code> devolve é congelada</td><td>Pode ser inspecionada, registrada em log e comparada em teste sem risco de alguém alterá-la no caminho.</td></tr>
+          <tr><td><strong>Factory com injeção de dependência</strong></td><td><code>createCurl({ fetch })</code></td><td>O transporte é um parâmetro. Os testes passam um fetch de mentira; você pode passar um com retry, cache ou log.</td></tr>
+          <tr><td><strong>Facade</strong></td><td>A tag <code>curl</code></td><td>Uma função esconde quatro etapas. Quem usa continua vendo o que via em 2021.</td></tr>
+          <tr><td><strong>Adapter</strong></td><td><code>utils.js</code> e <code>toFetchOptions</code></td><td>As quatro funções de 2021 seguem existindo, agora como janelas para o parser novo. E a requisição é traduzida para o fetch em um único lugar.</td></tr>
+          <tr><td><strong>Erros tipados com causa</strong></td><td><code>errors.js</code></td><td>Dá para distinguir “comando malformado” de “rede caiu” com <code>instanceof</code>, e o erro original fica em <code>cause</code>.</td></tr>
+          <tr><td><strong>Early return</strong></td><td>Em todo o código novo</td><td>O <code>if/else</code> aninhado de <code>getMethod</code> virou três linhas que se leem de cima para baixo.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="essencia">
+  <div class="col">
+    <h2>O que ficou igual, de propósito</h2>
+    <ul class="plain">
+      <li>O nome, a tag <code>curl`…`</code> e o retorno <code>{ data, status }</code>, inclusive para respostas de erro.</li>
+      <li>A pasta <code>src/curl/</code> com <code>curl.js</code> e <code>utils.js</code>, e as funções <code>getURL</code>, <code>getHeaders</code>, <code>getBody</code> e <code>getMethod</code>. Um teste garante que elas devolvem para o comando de 2021 o mesmo que devolviam.</li>
+      <li>O estilo: funções pequenas, puras, com nome, encadeadas.</li>
+      <li>O Ditto. O comando do teste original virou <code>examples/pokemon.js</code> e respondeu <code>200</code> na PokéAPI em 10 de novembro de 2026, com os cabeçalhos do Chrome 89 e tudo.</li>
+      <li>O código de 2021, intacto, na pasta <code>original/</code>, com os nove commits preservados no histórico.</li>
+    </ul>
+
+    <h3>O que ainda não faz</h3>
+    <p>Para ser justo com quem for usar: <code>-F</code> (multipart) e corpo lido de arquivo (<code>-d @arquivo</code>) lançam erro explicando que não são suportados. O formato “Copy as cURL (cmd)” do Windows, com <code>^</code>, não é lido. Redirecionamentos são sempre seguidos, como o axios fazia, mesmo sem <code>-L</code>. E no navegador o fetch descarta cabeçalhos que só o próprio navegador pode definir, como <code>User-Agent</code> e <code>Referer</code>.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="col">
+    <p>Original: <a href="https://github.com/JonathanSantos-zz/curl-in-js">JonathanSantos-zz/curl-in-js</a> (2021). Versão nova: <a href="https://github.com/JonathanSantos/curl-in-js-v2">JonathanSantos/curl-in-js-v2</a> (2026).</p>
+    <p>Todo código nesta página é exibido e editado com o <a href="https://github.com/JonathanSantos/jonacode">Jonacode</a>, o editor de código que o mesmo autor escreveu cinco anos depois. Os trechos são lidos dos arquivos reais do repositório na hora de gerar o relatório (<code>npm run report</code>).</p>
+  </div>
+</footer>
+
+<!--SOURCES-->
+<script src="vendor/jonacode/jonacode.report.iife.min.js"></script>
+<script>
+(async () => {
+  const sources = JSON.parse(document.getElementById('sources').textContent);
+  const J = window.Jonacode;
+  const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+  const theme = () => (darkQuery.matches ? J.oneDark : J.oneLight);
+  const editors = [];
+
+  const languageOf = (file) => (file.endsWith('.json') ? J.json : J.javascript);
+
+  // Monta um editor Jonacode. Sem o bundle (arquivo aberto fora do repositório), cai num <pre>.
+  const mount = (element, { value, language, readOnly = true, firstLine = 1, marks = [], wrap = false, maxLines }) => {
+    if (!J) {
+      const pre = document.createElement('pre');
+      pre.textContent = value;
+      element.append(pre);
+      return { getValue: () => value, setValue: (text) => { pre.textContent = text; }, setOptions() {}, on() {} };
+    }
+
+    const marked = new Set(marks);
+    const editor = J.createEditor(element, {
+      value,
+      language,
+      readOnly,
+      maxLines,
+      theme: theme(),
+      lineWrapping: wrap,
+      fontSize: 13,
+      ariaLabel: readOnly ? 'Código (somente leitura)' : 'Comando cURL',
+      extensions: [
+        J.lineNumbers({ format: (line) => String(line + firstLine - 1) }),
+        J.lineClass((text, line) => (marked.has(line + firstLine) ? 'mark' : null)),
+        ...(readOnly ? [] : [J.highlightActiveLine(), J.bracketMatching()]),
+      ],
+    });
+    editors.push(editor);
+    return editor;
+  };
+
+  darkQuery.addEventListener('change', () => editors.forEach((editor) => editor.setOptions({ theme: theme() })));
+
+  const range = (spec) => {
+    if (!spec) return null;
+    const [from, to = from] = spec.split('-').map(Number);
+    return { from, to };
+  };
+
+  // Trechos estáticos: <div class="code" data-file data-lines data-mark>
+  for (const element of document.querySelectorAll('.code[data-file]')) {
+    const file = element.dataset.file;
+    const lines = sources[file].replace(/\n$/, '').split('\n');
+    const slice = range(element.dataset.lines) ?? { from: 1, to: lines.length };
+    const markRange = range(element.dataset.mark);
+    const marks = markRange ? Array.from({ length: markRange.to - markRange.from + 1 }, (_, i) => markRange.from + i) : [];
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.innerHTML = `<span>${file}</span><span>${file.startsWith('original/') ? '2021' : '2026'}</span>`;
+    const host = document.createElement('div');
+    element.append(label, host);
+
+    mount(host, {
+      value: lines.slice(slice.from - 1, slice.to).join('\n'),
+      language: languageOf(file),
+      firstLine: slice.from,
+      marks,
+      wrap: 'wrap' in element.dataset,
+    });
+  }
+
+  // Abas com os arquivos da versão nova.
+  const newFiles = ['src/curl/curl.js', 'src/curl/tokenize.js', 'src/curl/options.js', 'src/curl/parse.js', 'src/curl/utils.js', 'src/curl/errors.js', 'index.js', 'test/e2e.test.js'];
+  const tabs = document.getElementById('tabs');
+  const newCode = mount(document.getElementById('new-code'), { value: sources[newFiles[0]], language: J?.javascript, maxLines: 34 });
+  const selectTab = (file) => {
+    newCode.setValue(sources[file]);
+    for (const button of tabs.children) button.setAttribute('aria-selected', String(button.dataset.file === file));
+  };
+  for (const file of newFiles) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.role = 'tab';
+    button.dataset.file = file;
+    button.textContent = file.replace('src/curl/', '');
+    button.addEventListener('click', () => selectTab(file));
+    tabs.append(button);
+  }
+  selectTab(newFiles[0]);
+
+  // Os dois parsers, carregados dos fontes reais como módulos.
+  const moduleUrl = (code) => URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+  const linked = {};
+  for (const name of ['errors.js', 'tokenize.js', 'options.js', 'parse.js']) {
+    const code = sources[`src/curl/${name}`].replace(/from '\.\/([\w-]+\.js)'/g, (match, dependency) => `from '${linked[dependency]}'`);
+    linked[name] = moduleUrl(code);
+  }
+  const [{ parseCurl }, { tokenize }, legacy] = await Promise.all([
+    import(linked['parse.js']),
+    import(linked['tokenize.js']),
+    import(moduleUrl(sources['original/src/curl/utils.js'])),
+  ]);
+
+  const attempt = (run) => {
+    try {
+      const value = run();
+      return value === undefined ? '(undefined)' : value;
+    } catch (error) {
+      return `ERRO  ${error.name}: ${error.message}`;
+    }
+  };
+
+  // Em 2021 a função recebia o texto "cozido" do template: a barra no fim da linha já tinha sumido.
+  const cook = (text) => text.replace(/\\\r?\n/g, '');
+
+  const runLegacy = (text) => {
+    const cooked = cook(text);
+    const body = attempt(() => legacy.getBody(cooked));
+    const hasBody = body !== null && !String(body).startsWith('ERRO');
+    return {
+      url: attempt(() => legacy.getURL(cooked)),
+      method: attempt(() => legacy.getMethod(cooked, hasBody)),
+      headers: attempt(() => legacy.getHeaders(cooked)),
+      body,
+    };
+  };
+
+  const runModern = (text) => attempt(() => {
+    const { ignored, ...request } = parseCurl(text);
+    return ignored.length > 0 ? { ...request, ignored } : request;
+  });
+
+  const presets = [
+    {
+      name: 'o teste de 2021',
+      hint: 'O comando do teste original. As duas versões leem a mesma coisa; a nova só devolve o método em maiúsculas, como o fetch espera.',
+      command: `curl 'https://pokeapi.co/api/v2/pokemon/ditto' \\\n  -H 'sec-ch-ua: "Google Chrome";v="89", "Chromium";v="89", ";Not A Brand";v="99"' \\\n  -H 'Referer: https://pokeapi.co/' \\\n  -H 'sec-ch-ua-mobile: ?0' \\\n  --compressed`,
+    },
+    {
+      name: 'tudo em uma linha',
+      hint: 'Sem a indentação do DevTools, o split de 2021 não tem onde cortar: a URL vem com o comando inteiro e os cabeçalhos somem.',
+      command: `curl 'https://pokeapi.co/api/v2/pokemon/ditto' -H 'Accept: application/json'`,
+    },
+    {
+      name: 'cabeçalho com “: ”',
+      hint: 'Repare em X-Nota: em 2021 o valor é cortado no segundo “: ”. E os dois espaços de X-Espacos quebram a linha no meio.',
+      command: `curl 'https://api.exemplo.dev/notas' \\\n  -H 'X-Nota: revisar: hoje' \\\n  -H 'X-Espacos: dois  espaços'`,
+    },
+    {
+      name: 'corpo de formulário',
+      hint: 'Um corpo que não é JSON. Em 2021, getBody lança SyntaxError; hoje o corpo é mantido como o texto exato que o curl enviaria.',
+      command: `curl 'https://api.exemplo.dev/login' \\\n  -H 'Content-Type: application/x-www-form-urlencoded' \\\n  --data-raw 'user=jona&remember=1'`,
+    },
+    {
+      name: 'PUT com JSON',
+      hint: 'Aqui 2021 lê tudo certo. O problema vinha depois: o corpo era entregue ao axios na opção errada e não saía da máquina.',
+      command: `curl 'https://api.exemplo.dev/pokemon/132' \\\n  -X 'PUT' \\\n  -H 'Content-Type: application/json' \\\n  --data-raw '{"name":"ditto","moves":["transform"]}'`,
+    },
+    {
+      name: 'o $\'…\' do Chrome',
+      hint: 'Quando o corpo tem apóstrofo, o Chrome copia no formato $\'…\' com escapes. A versão nova decodifica; a de 2021 não conhecia o formato.',
+      command: `curl 'https://api.exemplo.dev/frases' \\\n  -H 'Content-Type: application/json' \\\n  --data-raw $'{"frase":"it\\'s alive"}'`,
+    },
+    {
+      name: 'estilo terminal',
+      hint: 'Um comando escrito à mão: opções agrupadas, -X colado no valor, URL sem esquema, autenticação básica. Nada disso existia no formato do DevTools.',
+      command: `curl -sSL -XPOST api.exemplo.dev/ping -u jona:segredo -d ok=1`,
+    },
+  ];
+
+  const oldOutput = mount(document.getElementById('lab-old'), { value: '', language: J?.json, wrap: true });
+  const newOutput = mount(document.getElementById('lab-new'), { value: '', language: J?.json, wrap: true });
+  const tokensElement = document.getElementById('lab-tokens');
+  const hint = document.getElementById('hint');
+  const presetButtons = document.getElementById('presets');
+
+  const render = (text) => {
+    oldOutput.setValue(JSON.stringify(runLegacy(text), null, 2));
+    const modern = runModern(text);
+    newOutput.setValue(typeof modern === 'string' ? JSON.stringify(modern) : JSON.stringify(modern, null, 2));
+
+    const tokens = attempt(() => tokenize(text));
+    tokensElement.replaceChildren();
+    if (!Array.isArray(tokens)) return;
+    const caption = document.createElement('span');
+    caption.className = 'caption';
+    caption.textContent = `${tokens.length} argumentos em 2026:`;
+    tokensElement.append(caption, ...tokens.map((token) => Object.assign(document.createElement('span'), { textContent: token === '' ? '(vazio)' : token })));
+  };
+
+  const input = mount(document.getElementById('lab-input'), {
+    value: presets[0].command,
+    language: J?.shell,
+    readOnly: false,
+    wrap: true,
+  });
+
+  const clearPressed = () => { for (const button of presetButtons.children) button.setAttribute('aria-pressed', 'false'); };
+  input.on('change', () => render(input.getValue()));
+
+  for (const preset of presets) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = preset.name;
+    button.setAttribute('aria-pressed', 'false');
+    button.addEventListener('click', () => {
+      input.setValue(preset.command);
+      render(preset.command);
+      hint.textContent = preset.hint;
+      clearPressed();
+      button.setAttribute('aria-pressed', 'true');
+    });
+    presetButtons.append(button);
+  }
+  presetButtons.children[0].click();
+})();
+</script>
+</body>
+</html>

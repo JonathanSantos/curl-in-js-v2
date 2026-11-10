@@ -1,0 +1,37 @@
+{
+  "name": "curl-in-js",
+  "version": "2.0.0",
+  "description": "Cole o \"Copy as cURL\" do navegador num template literal e execute a requisição em JavaScript.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "src"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "example": "node examples/pokemon.js",
+    "report": "node scripts/build-report.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "curl",
+    "fetch",
+    "tagged-template",
+    "copy-as-curl",
+    "http"
+  ],
+  "author": "Jonathan Reis dos Santos",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/curl-in-js-v2.git"
+  }
+}
