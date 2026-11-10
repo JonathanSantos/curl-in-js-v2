@@ -33,7 +33,7 @@ O resultado tem três partes, todas neste repositório:
 |---|---|
 | [`original/`](original/) | O código de 2021, intacto. Os nove commits originais estão preservados no histórico do Git. |
 | [`src/`](src/curl/), [`index.js`](index.js), [`test/`](test/) | A versão 2.0.0. |
-| [`index.html`](index.html) | O relatório interativo: linha do tempo, o que admiro no original, os dois parsers rodando lado a lado na página. O resumo dele está [no fim deste README](#relatório). |
+| [`index.html`](index.html) | O relatório interativo, publicado em **[jonathansantos.github.io/curl-in-js-v2](https://jonathansantos.github.io/curl-in-js-v2/)**: linha do tempo, o que admiro no original, os dois parsers rodando lado a lado na página. O resumo dele está [no fim deste README](#relatório). |
 
 Todo código no relatório é exibido com o **[Jonacode](https://github.com/JonathanSantos/jonacode)**, o editor de código que escrevi cinco anos depois do curl-in-js. Um projeto meu de 2026 mostrando um projeto meu de 2021.
 
@@ -280,7 +280,7 @@ cd original && npm install && cd .. && node report/probe-2021.js
 
 # Relatório
 
-> A versão completa e interativa está em [`index.html`](index.html): abra o arquivo no navegador para ver os trechos no Jonacode e os dois parsers rodando lado a lado.
+> A versão completa e interativa está em **[jonathansantos.github.io/curl-in-js-v2](https://jonathansantos.github.io/curl-in-js-v2/)** (o [`index.html`](index.html) deste repositório), com os trechos no Jonacode e os dois parsers rodando lado a lado.
 
 ## curl-in-js, cinco anos depois
 
